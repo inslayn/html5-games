@@ -3,6 +3,12 @@
  * Nick McVroom-Amoakohene, Feb 2015
  */
 
+function Point(x, y) {
+    "use strict";
+    this.x = x;
+    this.y = y;
+}
+
 // constants
 var CONSTANTS = {
     CANVAS_ID: "snake_game",
@@ -14,12 +20,15 @@ var CONSTANTS = {
     FPS: 60,
     TIMEOUT_INTERVAL: 1000 / this.FPS,
     
-    SNAKE_START_LENGTH: 4
+    SNAKE_START_LENGTH: 4,
+    SNAKE_START_POSITION: new Point(25, 25),
+    SNAKE_SEGMENT_RADIUS: 5
 };
 
 // properties
 var canvas;
 var context;
+var lastDownTarget;
 
 var snake;
 
@@ -39,26 +48,104 @@ function setupRequestAnimationFrame() {
     );
 }
 
-function Snake(start_length) {
+function onKeyUp(event) {
+    "use strict";
+//    snake.speed = new Point(0.1, 0);
+    if (lastDownTarget === canvas) {
+        switch (event.keyCode) {
+        case 38:
+            // Up
+        case 87:
+            // W
+            snake.speed(new Point(0, -0.1));
+            break;
+        case 40:
+            // Down
+        case 83:
+            // S
+            snake.speed(new Point(0, 0.1));
+            break;
+        case 37:
+            // Left
+        case 65:
+            // A
+            snake.speed(new Point(-0.1, 0));
+            break;
+        case 39:
+            // Right
+        case 68:
+            // D
+            snake.speed(new Point(0.1, 0));
+            break;
+        }
+    }
+}
+
+function setupEventListeners() {
+    "use strict";
+    canvas.addEventListener("keyup", onKeyUp, true);
+}
+
+function Segment(x, y, radius) {
+    "use strict";
+    var xPos = x, yPos = y, prevXPos = 0, prevYPos = 0;
+    
+    this.move = function (xDelta, yDelta) {
+        prevXPos = xPos;
+        prevYPos = yPos;
+        
+        xPos += xDelta;
+        yPos += yDelta;
+    };
+    
+    this.draw = function () {
+        context.beginPath();
+        context.fillStyle = "white";
+        context.arc(xPos, yPos, radius, 0, Math.PI * 2, false);
+        context.fill();
+    };
+}
+
+function Snake(start_length, start_position) {
     "use strict";
     var i, ni;
     
-    snake = {
-        length: start_length,
-        increase: function () {
-            this.length += 1;
-        },
-        decrease: function () {
-            this.length -= 1;
-        },
-        draw: function () {
-            for (i = 0, ni = this.length; i < ni; i += 1) {
-                // draw snake
-                context.beginPath();
-                context.fillStyle = "white";
-                context.arc(50 * i, 50, 5, 0, Math.PI * 2, false);
-                context.fill();
-            }
+    this.segments = [];
+    this.deltaX = 0;
+    this.deltaY = 0;
+    
+    this.length = start_length;
+    
+    for (i = 0, ni = this.length; i < ni; i += 1) {
+        this.segments[i] = new Segment(start_position.x + 
+                                       (CONSTANTS.SNAKE_SEGMENT_RADIUS * 2) * (i + 1),
+                                       start_position.y, CONSTANTS.SNAKE_SEGMENT_RADIUS);
+    }
+    
+    this.increase = function () {
+        this.length += 1;
+    };
+        
+    this.decrease = function () {
+        this.length -= 1;
+    };
+    
+    this.speed = function (delta) {
+        this.deltaX = delta.x;
+        this.deltaY = delta.y;
+    };
+    
+    this.draw = function () {
+        for (i = 0, ni = this.length; i < ni; i += 1) {
+            // draw snake
+            this.segments[i].draw();
+        }
+    };
+    
+    this.update = function () {
+        for (i = 0, ni = this.length; i < ni; i += 1) {
+            // draw snake
+            this.segments[0].move(this.deltaX, this.deltaY);
         }
     };
 }
@@ -81,6 +168,12 @@ function init() {
     // grab the context
     context = canvas.getContext(CONSTANTS.CONTEXT_ID);
 
+    window.onload = function () {
+        document.addEventListener("mousedown", function (event) {
+            lastDownTarget = event.target;
+        }, false);
+    };
+    
     // set the canvas dimensions
     canvas.width = CONSTANTS.CANVAS_WIDTH;
     canvas.height = CONSTANTS.CANVAS_HEIGHT;
@@ -89,12 +182,15 @@ function init() {
     context.fillRect(0, 0, CONSTANTS.CANVAS_WIDTH, CONSTANTS.CANVAS_HEIGHT);
     
     // initialise the snake
-    snake = new Snake(CONSTANTS.SNAKE_START_LENGTH);
+    snake = new Snake(CONSTANTS.SNAKE_START_LENGTH, CONSTANTS.SNAKE_START_POSITION);
+    
+    setupEventListeners();
 }
     
 function draw() {
     "use strict";
     
+    requestAnimFrame(draw);
     paintCanvas();
 
     snake.draw();
@@ -104,8 +200,9 @@ function update() {
     "use strict";
     
     requestAnimFrame(update);
-    draw();
+    snake.update();
 }
 
 init();
 update();
+draw();
