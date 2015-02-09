@@ -88,20 +88,22 @@ function setupEventListeners() {
 
 function Segment(x, y, radius) {
     "use strict";
-    var xPos = x, yPos = y, prevXPos = 0, prevYPos = 0;
+    this.xPos = x; 
+    this.yPos = y; 
     
-    this.move = function (xDelta, yDelta) {
-        prevXPos = xPos;
-        prevYPos = yPos;
+    this.lastPosition = new Point(x, y);
+    
+    this.move = function (deltaX, deltaY) {
+        this.xPos += deltaX;
+        this.yPos += deltaY;
         
-        xPos += xDelta;
-        yPos += yDelta;
+        this.lastPosition = new Point(this.xPos, this.yPos);
     };
     
     this.draw = function () {
         context.beginPath();
         context.fillStyle = "white";
-        context.arc(xPos, yPos, radius, 0, Math.PI * 2, false);
+        context.arc(this.xPos, this.yPos, radius, 0, Math.PI * 2, false);
         context.fill();
     };
 }
@@ -116,9 +118,9 @@ function Snake(start_length, start_position) {
     
     this.length = start_length;
     
-    for (i = 0, ni = this.length; i < ni; i += 1) {
+    for (i = this.length - 1, ni = 0; i >= ni; i -= 1) {
         this.segments[i] = new Segment(start_position.x + 
-                                       (CONSTANTS.SNAKE_SEGMENT_RADIUS * 2) * (i + 1),
+                                       (CONSTANTS.SNAKE_SEGMENT_RADIUS * 2) * (this.length - i),
                                        start_position.y, CONSTANTS.SNAKE_SEGMENT_RADIUS);
     }
     
@@ -143,9 +145,13 @@ function Snake(start_length, start_position) {
     };
     
     this.update = function () {
-        for (i = 0, ni = this.length; i < ni; i += 1) {
-            // draw snake
-            this.segments[0].move(this.deltaX, this.deltaY);
+        this.segments[0].move(this.deltaX, this.deltaY);
+        
+        for (i = 1, ni = this.length; i < ni; i += 1) {
+            this.segments[i].move(this.segments[i].currentPosition,
+                                  this.segments[i - 1].currentPosition,
+                                  this.deltaX,
+                                  this.deltaY);
         }
     };
 }
